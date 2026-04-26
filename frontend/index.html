@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dispatch — Emergency Ambulance System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:          #0a0c10;
+  --bg2:         #0f1218;
+  --bg3:         #161b24;
+  --bg4:         #1c2230;
+  --border:      #1e2535;
+  --border2:     #28304a;
+  --text:        #e2e8f4;
+  --text2:       #7a8299;
+  --text3:       #424963;
+  --red:         #e8392e;
+  --red-soft:    rgba(232,57,46,0.10);
+  --red-glow:    rgba(232,57,46,0.22);
+  --amber:       #f0a432;
+  --amber-soft:  rgba(240,164,50,0.10);
+  --blue:        #4f8ef7;
+  --blue-soft:   rgba(79,142,247,0.10);
+  --green:       #27c76a;
+  --green-soft:  rgba(39,199,106,0.10);
+  --sidebar-w:   216px;
+  --radius:      8px;
+  --radius-sm:   5px;
+  --font:        'Geist', sans-serif;
+  --mono:        'Geist Mono', monospace;
+  --shadow:      0 2px 16px rgba(0,0,0,0.5);
+  --shadow-lg:   0 8px 40px rgba(0,0,0,0.65);
+}
+
+/* ═══════════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  display: flex;
+  overflow: hidden;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: var(--font); }
+
+/* ═══════════════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.sidebar-brand {
+  padding: 22px 18px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-brand .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 30px; height: 30px;
+  background: var(--red);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 0 14px var(--red-glow);
+}
+.logo-icon svg { display: block; }
+.logo-text {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text);
+}
+.logo-text span { color: var(--red); }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.13s;
+  user-select: none;
+}
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active {
+  background: var(--bg3);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border2);
+}
+.nav-icon {
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.nav-item.active .nav-icon,
+.nav-item:hover .nav-icon { opacity: 1; }
+.nav-label { font-size: 13px; letter-spacing: -0.1px; }
+
+.sidebar-footer {
+  padding: 10px 8px 16px;
+  border-top: 1px solid var(--border);
+}
+
+/* Live indicator */
+.live-badge {
+  margin: 0 18px 14px;
+  background: rgba(39,199,106,0.07);
+  border: 1px solid rgba(39,199,106,0.15);
+  border-radius: 20px;
+  padding: 5px 10px;
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--green); font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--green);
+  border-radius: 50%;
+  animation: pulse-green 2s ease infinite;
+  flex-shrink: 0;
+}
+@keyframes pulse-green {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.8); }
+}
+
+/* ═══════════════════════════════════════════════════
+   MAIN AREA
+═══════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.topbar {
+  height: 52px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 26px;
+  flex-shrink: 0;
+}
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-sep  { width: 1px; height: 16px; background: var(--border2); }
+.topbar-title { font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
+.topbar-sub { font-size: 12px; color: var(--text3); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 26px;
+  scroll-behavior: smooth;
+}
+.content::-webkit-scrollbar { width: 5px; }
+.content::-webkit-scrollbar-track { background: transparent; }
+.content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* Page sections */
+.page { display: none; animation: fadeIn 0.18s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+/* ═══════════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px; font-weight: 600;
+  transition: all 0.13s;
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+}
+.btn-primary {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 1px 8px var(--red-glow);
+}
+.btn-primary:hover {
+  background: #d42f25;
+  box-shadow: 0 2px 16px var(--red-glow);
+  transform: translateY(-1px);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--text3); background: var(--bg3); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-danger-soft {
+  background: var(--red-soft);
+  color: var(--red);
+  border: 1px solid rgba(232,57,46,0.18);
+}
+.btn-danger-soft:hover { background: var(--red); color:#fff; border-color: var(--red); }
+.btn-green-soft {
+  background: var(--green-soft);
+  color: var(--green);
+  border: 1px solid rgba(39,199,106,0.18);
+}
+.btn-green-soft:hover { background: var(--green); color:#fff; border-color: var(--green); }
+.btn-blue-soft {
+  background: var(--blue-soft);
+  color: var(--blue);
+  border: 1px solid rgba(79,142,247,0.18);
+}
+.btn-blue-soft:hover { background: var(--blue); color:#fff; border-color: var(--blue); }
+
+/* ═══════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════ */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  padding: 16px 18px 13px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+}
+.card-title { font-size: 13px; font-weight: 600; letter-spacing: -0.15px; color: var(--text); }
+.card-body { padding: 18px; }
+
+/* ═══════════════════════════════════════════════════
+   METRIC CARDS
+═══════════════════════════════════════════════════ */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.metric-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.metric-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+
+/* Accent glow patch in top-right corner */
+.metric-card::after {
+  content: '';
+  position: absolute;
+  top: -20px; right: -20px;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  opacity: 0.06;
+  pointer-events: none;
+}
+.metric-card.amber::after { background: var(--amber); }
+.metric-card.blue::after  { background: var(--blue); }
+.metric-card.green::after { background: var(--green); }
+.metric-card.default::after { background: var(--text2); }
+
+/* Thin top accent line */
+.metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  border-radius: 8px 8px 0 0;
+}
+.metric-card.amber::before { background: linear-gradient(90deg, var(--amber), transparent); }
+.metric-card.blue::before  { background: linear-gradient(90deg, var(--blue), transparent); }
+.metric-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+.metric-card.default::before { background: linear-gradient(90deg, var(--border2), transparent); }
+
+.metric-label {
+  font-size: 10.5px;
+  color: var(--text3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.metric-value {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.metric-value.amber  { color: var(--amber); }
+.metric-value.blue   { color: var(--blue); }
+.metric-value.green  { color: var(--green); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 5px; letter-spacing: 0.1px; }
+
+/* ═══════════════════════════════════════════════════
+   PAGE HEADER
+═══════════════════════════════════════════════════ */
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 22px;
+  gap: 16px;
+}
+.page-header-left h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+  color: var(--text);
+}
+.page-header-left p  { font-size: 12.5px; color: var(--text3); margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════════
+   TABS
+═══════════════════════════════════════════════════ */
+.tabs {
+  display: flex; gap: 1px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  width: fit-content;
+}
+.tab {
+  padding: 4px 13px;
+  border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  color: var(--text3);
+  cursor: pointer;
+  transition: all 0.13s;
+  user-select: none;
+  letter-spacing: -0.1px;
+}
+.tab:hover { color: var(--text2); }
+.tab.active {
+  background: var(--bg3);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+}
+
+/* ═══════════════════════════════════════════════════
+   BADGES
+═══════════════════════════════════════════════════ */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.25px;
+  white-space: nowrap;
+}
+.badge-pending  { background: rgba(240,164,50,0.12);  color: var(--amber); border: 1px solid rgba(240,164,50,0.2); }
+.badge-assigned { background: rgba(79,142,247,0.12);  color: var(--blue);  border: 1px solid rgba(79,142,247,0.2); }
+.badge-completed{ background: rgba(39,199,106,0.12);  color: var(--green); border: 1px solid rgba(39,199,106,0.2); }
+.badge-available{ background: rgba(39,199,106,0.12);  color: var(--green); border: 1px solid rgba(39,199,106,0.2); }
+.badge-busy     { background: rgba(232,57,46,0.12);   color: var(--red);   border: 1px solid rgba(232,57,46,0.2); }
+.badge-active   { background: rgba(39,199,106,0.12);  color: var(--green); border: 1px solid rgba(39,199,106,0.2); }
+.badge-warning  { background: rgba(240,164,50,0.12);  color: var(--amber); border: 1px solid rgba(240,164,50,0.2); }
+.badge-nearfull { background: rgba(232,57,46,0.12);   color: var(--red);   border: 1px solid rgba(232,57,46,0.2); }
+.badge-critical { background: rgba(232,57,46,0.12);   color: var(--red);   border: 1px solid rgba(232,57,46,0.2); }
+.badge-high     { background: rgba(240,164,50,0.12);  color: var(--amber); border: 1px solid rgba(240,164,50,0.2); }
+.badge-low      { background: rgba(39,199,106,0.12);  color: var(--green); border: 1px solid rgba(39,199,106,0.2); }
+
+/* Priority dot */
+.dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.dot-red    { background: var(--red); box-shadow: 0 0 5px rgba(232,57,46,0.5); }
+.dot-amber  { background: var(--amber); }
+.dot-green  { background: var(--green); }
+.dot-blue   { background: var(--blue); }
+.dot-gray   { background: var(--text3); }
+
+/* ═══════════════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════════════ */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text3);
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr { transition: background 0.1s; }
+tbody tr:hover { background: rgba(255,255,255,0.012); }
+.td-mono { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+.td-muted { color: var(--text2); font-size: 12.5px; }
+.td-bold { font-weight: 600; letter-spacing: -0.1px; }
+
+/* ═══════════════════════════════════════════════════
+   FORM
+═══════════════════════════════════════════════════ */
+.form-card {
+  background: var(--bg2);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  margin-bottom: 18px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.form-card.visible { border-color: rgba(232,57,46,0.4); }
+.form-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.form-title { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.form-body { padding: 18px; }
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+  margin-bottom: 16px;
+}
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 11.5px; color: var(--text2); font-weight: 600; letter-spacing: 0.1px; }
+.form-control {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  padding: 8px 11px;
+  width: 100%;
+  transition: border-color 0.13s, box-shadow 0.13s;
+  outline: none;
+  -webkit-appearance: none;
+}
+.form-control:focus {
+  border-color: rgba(232,57,46,0.5);
+  box-shadow: 0 0 0 3px rgba(232,57,46,0.08);
+}
+.form-control option { background: var(--bg3); }
+.form-actions { display: flex; gap: 8px; }
+
+/* ═══════════════════════════════════════════════════
+   DASHBOARD SPECIFIC
+═══════════════════════════════════════════════════ */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.request-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+  transition: opacity 0.1s;
+}
+.request-item:last-child { border-bottom: none; }
+.request-item:hover { opacity: 0.85; }
+.request-item-info { flex: 1; min-width: 0; }
+.request-item-type { font-size: 13px; font-weight: 600; letter-spacing: -0.1px; }
+.request-item-meta { font-size: 11.5px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+
+/* Hospital capacity bars */
+.hosp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.hosp-row:last-child { border-bottom: none; }
+.hosp-name { font-size: 12.5px; font-weight: 500; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hosp-count { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: var(--mono); }
+.progress-wrap { width: 72px; height: 4px; background: var(--bg4); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.progress-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+.progress-fill.green  { background: var(--green); }
+.progress-fill.amber  { background: var(--amber); }
+.progress-fill.red    { background: var(--red); }
+
+/* Fleet strip */
+.fleet-strip {
+  display: flex; flex-wrap: wrap; gap: 7px;
+  padding: 14px 18px;
+}
+.fleet-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 11px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px; font-weight: 500;
+  transition: border-color 0.13s;
+  font-family: var(--mono);
+  letter-spacing: -0.2px;
+}
+.fleet-pill:hover { border-color: var(--border2); }
+
+/* ═══════════════════════════════════════════════════
+   HOSPITALS GRID
+═══════════════════════════════════════════════════ */
+.hospitals-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.hosp-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  transition: border-color 0.2s;
+}
+.hosp-card:hover { border-color: var(--border2); }
+.hosp-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 12px; gap: 8px;
+}
+.hosp-card-name { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+.hosp-card-addr { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.hosp-card-contact { font-size: 12px; color: var(--text3); margin-bottom: 14px; font-family: var(--mono); }
+.hosp-capacity-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.hosp-capacity-label { font-size: 11.5px; color: var(--text2); font-weight: 500; }
+.hosp-capacity-count { font-size: 12px; font-weight: 600; font-family: var(--mono); }
+.hosp-bar-wrap { height: 5px; background: var(--bg4); border-radius: 2px; overflow: hidden; margin-bottom: 16px; }
+.hosp-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s; }
+.hosp-update-row { display: flex; align-items: center; gap: 8px; }
+.hosp-update-row input[type=number] {
+  width: 76px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  font-family: var(--mono);
+  transition: border-color 0.13s;
+}
+.hosp-update-row input[type=number]:focus { border-color: rgba(79,142,247,0.5); }
+
+/* ═══════════════════════════════════════════════════
+   MAP PLACEHOLDER
+═══════════════════════════════════════════════════ */
+.map-placeholder {
+  background: var(--bg2);
+  border: 1px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 36px;
+  text-align: center;
+  color: var(--text3);
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+}
+/* subtle grid lines for map feel */
+.map-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+.map-placeholder-inner { position: relative; z-index: 1; }
+.map-placeholder svg { opacity: 0.25; margin-bottom: 10px; display: block; margin-left: auto; margin-right: auto; }
+.map-placeholder p { font-size: 13px; color: var(--text2); font-weight: 500; }
+.map-placeholder small { font-size: 11px; color: var(--text3); display: block; margin-top: 5px; font-family: var(--mono); }
+
+/* ═══════════════════════════════════════════════════
+   REPORTS
+═══════════════════════════════════════════════════ */
+.reports-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.bar-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.bar-row:last-child { border-bottom: none; }
+.bar-label { font-size: 12.5px; font-weight: 500; width: 140px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar-track { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+.bar-fill  { height: 100%; background: var(--blue); border-radius: 3px; transition: width 0.5s; }
+.bar-count { font-size: 12px; font-family: var(--mono); color: var(--text2); width: 28px; text-align: right; }
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════ */
+#toast-container {
+  position: fixed;
+  bottom: 22px; right: 22px;
+  display: flex; flex-direction: column; gap: 7px;
+  z-index: 9999;
+}
+.toast {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 11px 15px;
+  font-size: 12.5px;
+  box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; gap: 10px;
+  animation: slideIn 0.22s ease;
+  min-width: 250px; max-width: 340px;
+}
+.toast-icon {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.toast.success { border-left: 2px solid var(--green); }
+.toast.success .toast-icon { background: var(--green); }
+.toast.error   { border-left: 2px solid var(--red); }
+.toast.error   .toast-icon { background: var(--red); }
+.toast.info    { border-left: 2px solid var(--blue); }
+.toast.info    .toast-icon { background: var(--blue); }
+@keyframes slideIn {
+  from { opacity:0; transform: translateX(16px); }
+  to   { opacity:1; transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════
+   LOADING SPINNER
+═══════════════════════════════════════════════════ */
+.spinner {
+  width: 18px; height: 18px;
+  border: 1.5px solid var(--border2);
+  border-top-color: var(--red);
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+  text-align: center;
+  padding: 36px 20px;
+  color: var(--text3);
+}
+.empty-state .empty-icon {
+  width: 32px; height: 32px;
+  opacity: 0.25;
+  margin: 0 auto 10px;
+  display: block;
+}
+.empty-state p { font-size: 13px; }
+
+/* ═══════════════════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════════════════ */
+.flex         { display: flex; }
+.items-center { align-items: center; }
+.gap-8        { gap: 8px; }
+.gap-12       { gap: 12px; }
+.mt-16        { margin-top: 16px; }
+.mt-20        { margin-top: 20px; }
+.mb-16        { margin-bottom: 16px; }
+.text-muted   { color: var(--text2); }
+.text-sm      { font-size: 12px; }
+.hidden       { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     SIDEBAR
+═══════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">
+      <div class="logo-icon">
+        <!-- Clean plus/cross SVG logo -->
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6.5" y="2" width="3" height="12" rx="1.5" fill="white"/>
+          <rect x="2" y="6.5" width="12" height="3" rx="1.5" fill="white"/>
+        </svg>
+      </div>
+      <div class="logo-text"><span>Dis</span>patch</div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <div class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".8"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.5" fill="currentColor" opacity=".8"/></svg>
+      </span>
+      <span class="nav-label">Dashboard</span>
+    </div>
+    <div class="nav-item" data-page="requests">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.5l2 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="nav-label">Emergency Requests</span>
+    </div>
+    <div class="nav-item" data-page="ambulances">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="5" width="14" height="8" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M4 5V4a2 2 0 012-2h4a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.4"/><circle cx="4.5" cy="13" r="1.5" fill="currentColor"/><circle cx="11.5" cy="13" r="1.5" fill="currentColor"/></svg>
+      </span>
+      <span class="nav-label">Ambulances</span>
+    </div>
+    <div class="nav-item" data-page="hospitals">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 6v4M6 8h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </span>
+      <span class="nav-label">Hospitals</span>
+    </div>
+    <div class="nav-item" data-page="assignments">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="1.5" width="10" height="13" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+      </span>
+      <span class="nav-label">Assignments</span>
+    </div>
+    <div class="nav-item" data-page="reports">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l3.5-4 3 3 2.5-5L14 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="nav-label">Reports</span>
+    </div>
+  </nav>
+
+  <div class="live-badge">
+    <div class="live-dot"></div>
+    System live
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="nav-item" data-page="dashboard">
+      <span class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </span>
+      <span class="nav-label">Admin</span>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════════ -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-sep"></div>
+      <div class="topbar-sub" id="topbar-sub">Live system overview</div>
+    </div>
+    <div class="topbar-right">
+      <span class="text-muted text-sm" id="last-updated"></span>
+      <button class="btn btn-ghost btn-sm" onclick="refreshCurrentPage()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M10.5 6A4.5 4.5 0 112.3 3.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2 1.5v2h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-primary btn-sm" onclick="openNewRequestForm()">+ New Request</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ─── DASHBOARD ─────────────────────────────── -->
+    <section class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Dashboard</h1>
+          <p>Live system overview</p>
+        </div>
+        <button class="btn btn-primary" onclick="openNewRequestForm()">+ New Request</button>
+      </div>
+
+      <div class="metrics-row" id="dash-metrics">
+        <div class="metric-card amber">
+          <div class="metric-label">Pending</div>
+          <div class="metric-value amber" id="m-pending">—</div>
+          <div class="metric-sub">awaiting allocation</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-label">Active</div>
+          <div class="metric-value blue" id="m-active">—</div>
+          <div class="metric-sub">ambulances deployed</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Available</div>
+          <div class="metric-value green" id="m-available">—</div>
+          <div class="metric-sub">ambulances ready</div>
+        </div>
+        <div class="metric-card default">
+          <div class="metric-label">Completed</div>
+          <div class="metric-value" id="m-completed">—</div>
+          <div class="metric-sub">today</div>
+        </div>
+      </div>
+
+      <div class="dash-grid">
+        <!-- Recent Requests -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Recent emergency requests</span>
+            <div class="tabs" id="dash-req-tabs">
+              <div class="tab active" data-filter="all">All</div>
+              <div class="tab" data-filter="PENDING">Pending</div>
+              <div class="tab" data-filter="ASSIGNED">Assigned</div>
+            </div>
+          </div>
+          <div class="card-body" id="dash-requests-list" style="padding:0 18px;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+          <div style="padding:12px 18px; border-top:1px solid var(--border);">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('requests')">View all requests</button>
+          </div>
+        </div>
+
+        <!-- Hospital Capacity -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Hospital bed capacity</span>
+          </div>
+          <div class="card-body" id="dash-hospitals" style="padding:0 18px;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+          <div style="padding:12px 18px; border-top:1px solid var(--border);">
+            <button class="btn btn-ghost btn-sm" onclick="navigate('reports')">Analyze capacity</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Fleet Status -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Ambulance fleet status</span>
+          <span class="text-muted text-sm" id="fleet-count"></span>
+        </div>
+        <div class="fleet-strip" id="dash-fleet">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── EMERGENCY REQUESTS ────────────────────── -->
+    <section class="page" id="page-requests">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Emergency requests</h1>
+          <p>Manage and allocate incoming emergency calls</p>
+        </div>
+        <button class="btn btn-primary" id="toggle-form-btn" onclick="toggleForm()">+ New request</button>
+      </div>
+
+      <!-- New Request Form -->
+      <div class="form-card" id="new-request-form" style="display:none;">
+        <div class="form-header">
+          <span class="form-title">Log new emergency call</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleForm()">Cancel</button>
+        </div>
+        <div class="form-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Caller name</label>
+              <input class="form-control" type="text" id="f-name" placeholder="Full name" />
+            </div>
+            <div class="form-group">
+              <label>Caller phone</label>
+              <input class="form-control" type="text" id="f-phone" placeholder="10-digit number" />
+            </div>
+            <div class="form-group">
+              <label>Emergency type</label>
+              <select class="form-control" id="f-type">
+                <option value="Cardiac arrest">Cardiac arrest</option>
+                <option value="Road accident">Road accident</option>
+                <option value="Breathing difficulty">Breathing difficulty</option>
+                <option value="Fall injury">Fall injury</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Priority</label>
+              <select class="form-control" id="f-priority">
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Low">Low</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Latitude</label>
+              <input class="form-control" type="number" step="any" id="f-lat" placeholder="e.g. 30.7333" />
+            </div>
+            <div class="form-group">
+              <label>Longitude</label>
+              <input class="form-control" type="number" step="any" id="f-lon" placeholder="e.g. 76.7794" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="submitRequest()">Save &amp; allocate</button>
+            <button class="btn btn-ghost" onclick="toggleForm()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter tabs + table -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All requests</span>
+          <div class="tabs" id="req-tabs">
+            <div class="tab active" data-filter="all">All</div>
+            <div class="tab" data-filter="PENDING">Pending</div>
+            <div class="tab" data-filter="ASSIGNED">Assigned</div>
+            <div class="tab" data-filter="COMPLETED">Completed</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Emergency</th>
+                <th>Caller</th>
+                <th>Location</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Time</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="requests-tbody">
+              <tr><td colspan="8" class="empty-state"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── AMBULANCES ────────────────────────────── -->
+    <section class="page" id="page-ambulances">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Ambulances</h1>
+          <p>Fleet management and dispatch tracking</p>
+        </div>
+      </div>
+
+      <div class="metrics-row" id="amb-metrics">
+        <div class="metric-card default">
+          <div class="metric-label">Total fleet</div>
+          <div class="metric-value" id="am-total">—</div>
+          <div class="metric-sub">registered units</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Available</div>
+          <div class="metric-value green" id="am-avail">—</div>
+          <div class="metric-sub">ready to deploy</div>
+        </div>
+        <div class="metric-card amber">
+          <div class="metric-label">Busy</div>
+          <div class="metric-value amber" id="am-busy">—</div>
+          <div class="metric-sub">on assignment</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-label">Drivers active</div>
+          <div class="metric-value blue" id="am-drivers">—</div>
+          <div class="metric-sub">currently on duty</div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-header">
+          <span class="card-title">Fleet directory</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Vehicle</th>
+                <th>Driver</th>
+                <th>License</th>
+                <th>Experience</th>
+                <th>GPS Coordinates</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ambulances-tbody">
+              <tr><td colspan="7" class="empty-state"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Map Placeholder -->
+      <div class="map-placeholder">
+        <div class="map-placeholder-inner">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 4C13.4 4 8 9.4 8 16c0 9 12 20 12 20s12-11 12-20c0-6.6-5.4-12-12-12z" stroke="currentColor" stroke-width="2" fill="none"/>
+            <circle cx="20" cy="16" r="4" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <p>Map placeholder — GPS coordinates plotted here using Leaflet.js or Google Maps embed</p>
+          <small>Connect a mapping library and feed current_latitude / current_longitude from the Ambulance table</small>
+        </div>
+      </div>
+
+      <!-- Mini fleet legend -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">Quick fleet legend</span></div>
+        <div class="fleet-strip" id="amb-fleet-strip"></div>
+      </div>
+    </section>
+
+    <!-- ─── HOSPITALS ─────────────────────────────── -->
+    <section class="page" id="page-hospitals">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Hospitals</h1>
+          <p>Bed capacity management and occupancy tracking</p>
+        </div>
+      </div>
+      <div class="hospitals-grid" id="hospitals-grid">
+        <div class="empty-state"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- ─── ASSIGNMENTS ───────────────────────────── -->
+    <section class="page" id="page-assignments">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Assignments</h1>
+          <p>Full allocation history across all resources</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All assignments</span>
+          <div class="tabs" id="asgn-tabs">
+            <div class="tab active" data-filter="all">All</div>
+            <div class="tab" data-filter="active">Active</div>
+            <div class="tab" data-filter="completed">Completed</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Emergency</th>
+                <th>Caller</th>
+                <th>Ambulance</th>
+                <th>Driver</th>
+                <th>Hospital</th>
+                <th>Assigned</th>
+                <th>Completed</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="assignments-tbody">
+              <tr><td colspan="9" class="empty-state"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── REPORTS ───────────────────────────────── -->
+    <section class="page" id="page-reports">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Reports</h1>
+          <p>Aggregate statistics and performance insights</p>
+        </div>
+      </div>
+
+      <!-- Daily Summary -->
+      <div class="metrics-row" style="margin-bottom:18px;">
+        <div class="metric-card amber">
+          <div class="metric-label">Pending today</div>
+          <div class="metric-value amber" id="r-pending">—</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-label">Assigned today</div>
+          <div class="metric-value blue" id="r-assigned">—</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label">Completed today</div>
+          <div class="metric-value green" id="r-completed">—</div>
+        </div>
+        <div class="metric-card default">
+          <div class="metric-label">Total today</div>
+          <div class="metric-value" id="r-total">—</div>
+        </div>
+      </div>
+
+      <div class="reports-grid">
+        <!-- Assignments per hospital -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Assignments per hospital</span></div>
+          <div class="card-body" id="report-hosp-bars" style="padding:0 18px;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Top ambulances -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Top ambulances by assignments</span></div>
+          <div class="card-body" id="report-amb-bars" style="padding:0 18px;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+
+        <!-- Pending by hour -->
+        <div class="card" style="grid-column:1/-1;">
+          <div class="card-header"><span class="card-title">Requests by hour today</span></div>
+          <div class="card-body" id="report-hours" style="padding:0 18px;">
+            <div class="empty-state"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /content -->
+</main>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONFIG
+═══════════════════════════════════════════════════ */
+const API = 'http://localhost:3000/api';
+let currentPage = 'dashboard';
+let dashRequestsData = [];
+let requestsData = [];
+let assignmentsData = [];
+let ambData = [];
+let autoRefreshTimer = null;
+
+/* ═══════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════ */
+function toast(msg, type = 'info', duration = 3500) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<div class="toast-icon"></div><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.style.opacity='0';
+    t.style.transform='translateX(16px)';
+    t.style.transition='all 0.25s';
+    setTimeout(()=>t.remove(),250);
+  }, duration);
+}
+
+/* ═══════════════════════════════════════════════════
+   API HELPER
+═══════════════════════════════════════════════════ */
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  } catch (e) {
+    toast(e.message, 'error');
+    throw e;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   NAVIGATION
+═══════════════════════════════════════════════════ */
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+  currentPage = page;
+  const titles = {
+    dashboard:   ['Dashboard', 'Live system overview'],
+    requests:    ['Emergency requests', 'Manage and allocate calls'],
+    ambulances:  ['Ambulances', 'Fleet management'],
+    hospitals:   ['Hospitals', 'Bed capacity management'],
+    assignments: ['Assignments', 'Full allocation history'],
+    reports:     ['Reports', 'Aggregate statistics']
+  };
+  document.getElementById('topbar-title').textContent = titles[page][0];
+  document.getElementById('topbar-sub').textContent   = titles[page][1];
+  loadPage(page);
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+  el.addEventListener('click', () => navigate(el.dataset.page));
+});
+
+/* ═══════════════════════════════════════════════════
+   LOAD PAGE ROUTER
+═══════════════════════════════════════════════════ */
+function loadPage(page) {
+  clearInterval(autoRefreshTimer);
+  if (page === 'dashboard')   { loadDashboard(); autoRefreshTimer = setInterval(loadDashboard, 30000); }
+  if (page === 'requests')    loadRequests();
+  if (page === 'ambulances')  loadAmbulances();
+  if (page === 'hospitals')   loadHospitals();
+  if (page === 'assignments') loadAssignments();
+  if (page === 'reports')     loadReports();
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+function refreshCurrentPage() { loadPage(currentPage); }
+
+/* ═══════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════ */
+function priorityDot(p) {
+  const cls = { Critical:'dot-red', High:'dot-amber', Low:'dot-green' };
+  return `<span class="dot ${cls[p]||'dot-gray'}"></span>`;
+}
+function priorityBadge(p) {
+  const cls = { Critical:'badge-critical', High:'badge-high', Low:'badge-low' };
+  return `<span class="badge ${cls[p]||''}">${p}</span>`;
+}
+function statusBadge(s) {
+  const cls = { PENDING:'badge-pending', ASSIGNED:'badge-assigned', COMPLETED:'badge-completed' };
+  return `<span class="badge ${cls[s]||''}">${s}</span>`;
+}
+function timeAgo(dt) {
+  const diff = Date.now() - new Date(dt);
+  const m = Math.floor(diff/60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+function fmtTime(dt) {
+  if (!dt) return '—';
+  return new Date(dt).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function bedColor(used, total) {
+  const pct = used / total;
+  if (pct < 0.6) return 'green';
+  if (pct < 0.9) return 'amber';
+  return 'red';
+}
+
+/* ═══════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════ */
+async function loadDashboard() {
+  try {
+    const [reqs, ambs, hosps] = await Promise.all([
+      api('/requests'),
+      api('/ambulances'),
+      api('/hospitals')
+    ]);
+
+    const pending   = reqs.filter(r => r.status === 'PENDING').length;
+    const active    = ambs.filter(a => a.status === 'BUSY').length;
+    const available = ambs.filter(a => a.status === 'AVAILABLE').length;
+    const completed = reqs.filter(r => r.status === 'COMPLETED' && isToday(r.request_time)).length;
+    document.getElementById('m-pending').textContent   = pending;
+    document.getElementById('m-active').textContent    = active;
+    document.getElementById('m-available').textContent = available;
+    document.getElementById('m-completed').textContent = completed;
+
+    dashRequestsData = reqs.slice(0, 10);
+    renderDashRequests('all');
+
+    const hEl = document.getElementById('dash-hospitals');
+    if (!hosps.length) { hEl.innerHTML = '<div class="empty-state"><p>No hospitals found</p></div>'; }
+    else {
+      hEl.innerHTML = hosps.map(h => {
+        const used = h.total_beds - h.available_beds;
+        const pct  = Math.round((used / h.total_beds) * 100);
+        const col  = bedColor(used, h.total_beds);
+        return `<div class="hosp-row">
+          <span class="hosp-name">${h.name}</span>
+          <span class="hosp-count">${used}/${h.total_beds}</span>
+          <div class="progress-wrap"><div class="progress-fill ${col}" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+    }
+
+    document.getElementById('fleet-count').textContent = `${ambs.length} units`;
+    const fEl = document.getElementById('dash-fleet');
+    fEl.innerHTML = ambs.map(a => {
+      const busy = a.status === 'BUSY';
+      return `<div class="fleet-pill">
+        <span class="dot ${busy ? 'dot-red' : 'dot-green'}"></span>
+        <span>${a.vehicle_number}</span>
+        <span class="badge ${busy ? 'badge-busy' : 'badge-available'}" style="font-size:10px;padding:2px 6px;">${a.status}</span>
+      </div>`;
+    }).join('');
+
+    document.querySelectorAll('#dash-req-tabs .tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('#dash-req-tabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        renderDashRequests(tab.dataset.filter);
+      };
+    });
+
+  } catch(e) {}
+}
+
+function isToday(dt) {
+  const d = new Date(dt), n = new Date();
+  return d.getDate()===n.getDate() && d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();
+}
+
+function renderDashRequests(filter) {
+  const el = document.getElementById('dash-requests-list');
+  let data = filter === 'all' ? dashRequestsData : dashRequestsData.filter(r => r.status === filter);
+  if (!data.length) { el.innerHTML = '<div class="empty-state"><p>No requests found</p></div>'; return; }
+  el.innerHTML = data.slice(0, 6).map(r => {
+    const dotCls = { Critical:'dot-red', High:'dot-amber', Low:'dot-green' };
+    const statusCls = { PENDING:'badge-pending', ASSIGNED:'badge-assigned', COMPLETED:'badge-completed' };
+    return `<div class="request-item">
+      <span class="dot ${dotCls[r.priority]||'dot-gray'}"></span>
+      <div class="request-item-info">
+        <div class="request-item-type">${r.emergency_type}</div>
+        <div class="request-item-meta">${r.location_latitude?.toFixed(4)}, ${r.location_longitude?.toFixed(4)} · ${timeAgo(r.request_time)}</div>
+      </div>
+      <span class="badge ${statusCls[r.status]||''}">${r.status}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════════
+   EMERGENCY REQUESTS PAGE
+═══════════════════════════════════════════════════ */
+let reqFilter = 'all';
+async function loadRequests() {
+  try {
+    requestsData = await api('/requests');
+    renderRequests();
+    document.querySelectorAll('#req-tabs .tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('#req-tabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        reqFilter = tab.dataset.filter;
+        renderRequests();
+      };
+    });
+  } catch(e) {}
+}
+
+function renderRequests() {
+  const tbody = document.getElementById('requests-tbody');
+  let data = reqFilter === 'all' ? requestsData : requestsData.filter(r => r.status === reqFilter);
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>No requests found</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(r => `
+    <tr>
+      <td>${priorityDot(r.priority)}</td>
+      <td class="td-bold">${r.emergency_type}</td>
+      <td>${r.caller_name || '—'}<br><span class="td-muted">${r.caller_phone || ''}</span></td>
+      <td class="td-mono">${r.location_latitude?.toFixed(4)}, ${r.location_longitude?.toFixed(4)}</td>
+      <td>${priorityBadge(r.priority)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td class="td-muted">${timeAgo(r.request_time)}</td>
+      <td>
+        ${r.status === 'PENDING'
+          ? `<button class="btn btn-danger-soft btn-sm" onclick="allocateRequest(${r.request_id})">Allocate</button>`
+          : '<span class="td-muted">—</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function allocateRequest(id) {
+  try {
+    const req = await api(`/requests/${id}/allocate`, { method: 'POST' });
+    if (req.status === 'ASSIGNED') toast('Ambulance allocated successfully', 'success');
+    else toast('No resources available — request stays pending', 'info');
+    await loadRequests();
+  } catch(e) {}
+}
+
+/* ─── Form ───────────────────────────────────────── */
+function toggleForm() {
+  const form = document.getElementById('new-request-form');
+  const visible = form.style.display !== 'none';
+  form.style.display = visible ? 'none' : 'block';
+  form.classList.toggle('visible', !visible);
+  if (!visible) navigate('requests');
+}
+
+function openNewRequestForm() {
+  navigate('requests');
+  const form = document.getElementById('new-request-form');
+  form.style.display = 'block';
+  form.classList.add('visible');
+}
+
+async function submitRequest() {
+  const name  = document.getElementById('f-name').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const type  = document.getElementById('f-type').value;
+  const pri   = document.getElementById('f-priority').value;
+  const lat   = parseFloat(document.getElementById('f-lat').value);
+  const lon   = parseFloat(document.getElementById('f-lon').value);
+
+  if (!name || !phone || isNaN(lat) || isNaN(lon)) {
+    toast('Please fill all required fields', 'error');
+    return;
+  }
+
+  try {
+    const req = await api('/requests', {
+      method: 'POST',
+      body: JSON.stringify({ caller_name:name, caller_phone:phone, emergency_type:type, location_latitude:lat, location_longitude:lon, priority:pri })
+    });
+    const msg = req.status === 'ASSIGNED' ? 'Allocated — ambulance dispatched' : 'Request logged — pending allocation';
+    toast(msg, req.status === 'ASSIGNED' ? 'success' : 'info');
+    ['f-name','f-phone','f-lat','f-lon'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('new-request-form').style.display='none';
+    await loadRequests();
+    if (currentPage === 'dashboard') loadDashboard();
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════
+   AMBULANCES PAGE
+═══════════════════════════════════════════════════ */
+async function loadAmbulances() {
+  try {
+    ambData = await api('/ambulances');
+    const total   = ambData.length;
+    const avail   = ambData.filter(a => a.status === 'AVAILABLE').length;
+    const busy    = ambData.filter(a => a.status === 'BUSY').length;
+    document.getElementById('am-total').textContent   = total;
+    document.getElementById('am-avail').textContent   = avail;
+    document.getElementById('am-busy').textContent    = busy;
+    document.getElementById('am-drivers').textContent = busy;
+
+    const tbody = document.getElementById('ambulances-tbody');
+    if (!ambData.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><p>No ambulances found</p></div></td></tr>`;
+    } else {
+      tbody.innerHTML = ambData.map(a => `
+        <tr>
+          <td class="td-bold">${a.vehicle_number}</td>
+          <td>${a.driver_name || '—'}</td>
+          <td class="td-mono">${a.license_number || '—'}</td>
+          <td class="td-muted">${a.experience_years != null ? a.experience_years + ' yrs' : '—'}</td>
+          <td class="td-mono">${a.current_latitude?.toFixed(4)}, ${a.current_longitude?.toFixed(4)}</td>
+          <td><span class="badge ${a.status==='AVAILABLE'?'badge-available':'badge-busy'}">${a.status}</span></td>
+          <td>
+            ${a.status === 'BUSY'
+              ? `<button class="btn btn-green-soft btn-sm" onclick="markDone(${a.ambulance_id})">Mark done</button>`
+              : `<button class="btn btn-blue-soft btn-sm">View map</button>`}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    const strip = document.getElementById('amb-fleet-strip');
+    strip.innerHTML = ambData.map(a => {
+      const busy = a.status === 'BUSY';
+      return `<div class="fleet-pill">
+        <span class="dot ${busy?'dot-red':'dot-green'}"></span>
+        <span>${a.vehicle_number}</span>
+        <span class="badge ${busy?'badge-busy':'badge-available'}" style="font-size:10px;padding:2px 6px;">${a.status}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function markDone(ambulanceId) {
+  try {
+    await api(`/ambulances/${ambulanceId}/complete`, { method: 'PUT' });
+    toast('Job completed — ambulance now available', 'success');
+    await loadAmbulances();
+    if (currentPage === 'dashboard') loadDashboard();
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════
+   HOSPITALS PAGE
+═══════════════════════════════════════════════════ */
+async function loadHospitals() {
+  try {
+    const hosps = await api('/hospitals');
+    const grid  = document.getElementById('hospitals-grid');
+    if (!hosps.length) {
+      grid.innerHTML = '<div class="empty-state"><p>No hospitals found</p></div>';
+      return;
+    }
+    grid.innerHTML = hosps.map(h => {
+      const used  = h.total_beds - h.available_beds;
+      const pct   = Math.round((used / h.total_beds) * 100);
+      const col   = bedColor(used, h.total_beds);
+      const ratio = h.available_beds / h.total_beds;
+      let sBadge, sClass;
+      if (ratio > 0.2)              { sBadge='Active';    sClass='badge-available'; }
+      else if (h.available_beds > 1) { sBadge='Warning';  sClass='badge-warning'; }
+      else                           { sBadge='Near full'; sClass='badge-nearfull'; }
+      return `
+        <div class="hosp-card">
+          <div class="hosp-card-header">
+            <div>
+              <div class="hosp-card-name">${h.name}</div>
+              <div class="hosp-card-addr">${h.address || '—'}</div>
+            </div>
+            <span class="badge ${sClass}">${sBadge}</span>
+          </div>
+          <div class="hosp-card-contact">${h.contact_number || '—'}</div>
+          <div class="hosp-capacity-row">
+            <span class="hosp-capacity-label">Bed occupancy</span>
+            <span class="hosp-capacity-count" style="color:var(--${col})">${used} / ${h.total_beds} used</span>
+          </div>
+          <div class="hosp-bar-wrap">
+            <div class="hosp-bar-fill" style="width:${pct}%;background:var(--${col})"></div>
+          </div>
+          <div class="hosp-update-row">
+            <span class="text-muted text-sm">Available beds</span>
+            <input type="number" id="beds-${h.hospital_id}" value="${h.available_beds}" min="0" max="${h.total_beds}" />
+            <button class="btn btn-blue-soft btn-sm" onclick="updateBeds(${h.hospital_id})">Update</button>
+          </div>
+        </div>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function updateBeds(id) {
+  const val = parseInt(document.getElementById(`beds-${id}`).value);
+  if (isNaN(val) || val < 0) { toast('Invalid bed count', 'error'); return; }
+  try {
+    await api(`/hospitals/${id}/beds`, { method:'PUT', body:JSON.stringify({ available_beds: val }) });
+    toast('Bed count updated', 'success');
+    await loadHospitals();
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════
+   ASSIGNMENTS PAGE
+═══════════════════════════════════════════════════ */
+let asgnFilter = 'all';
+async function loadAssignments() {
+  try {
+    assignmentsData = await api('/assignments');
+    renderAssignments();
+    document.querySelectorAll('#asgn-tabs .tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('#asgn-tabs .tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        asgnFilter = tab.dataset.filter;
+        renderAssignments();
+      };
+    });
+  } catch(e) {}
+}
+
+function renderAssignments() {
+  const tbody = document.getElementById('assignments-tbody');
+  let data = assignmentsData;
+  if (asgnFilter === 'active')    data = data.filter(a => !a.completion_time);
+  if (asgnFilter === 'completed') data = data.filter(a =>  a.completion_time);
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><p>No assignments found</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td class="td-mono">#${a.assignment_id}</td>
+      <td>
+        <div class="flex items-center gap-8">
+          ${priorityDot(a.priority)}
+          <span class="td-bold">${a.emergency_type}</span>
+        </div>
+      </td>
+      <td>${a.caller_name || '—'}</td>
+      <td class="td-bold">${a.vehicle_number}</td>
+      <td>${a.driver_name}</td>
+      <td>${a.hospital_name}</td>
+      <td class="td-muted">${fmtTime(a.assigned_time)}</td>
+      <td class="td-muted">${a.completion_time ? fmtTime(a.completion_time) : '<span class="badge badge-assigned">Active</span>'}</td>
+      <td>
+        ${!a.completion_time
+          ? `<button class="btn btn-green-soft btn-sm" onclick="completeAssignment(${a.assignment_id})">Mark complete</button>`
+          : '<span class="td-muted">—</span>'}
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function completeAssignment(id) {
+  try {
+    await api(`/assignments/${id}/complete`, { method:'PUT' });
+    toast('Assignment completed', 'success');
+    await loadAssignments();
+    if (currentPage === 'dashboard') loadDashboard();
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════
+   REPORTS PAGE
+═══════════════════════════════════════════════════ */
+async function loadReports() {
+  try {
+    const [summary, hospReport, ambReport, hours] = await Promise.all([
+      api('/reports/daily-summary'),
+      api('/reports/assignments-per-hospital'),
+      api('/reports/top-ambulances'),
+      api('/reports/pending-by-hour')
+    ]);
+
+    document.getElementById('r-pending').textContent   = summary.pending   || 0;
+    document.getElementById('r-assigned').textContent  = summary.assigned  || 0;
+    document.getElementById('r-completed').textContent = summary.completed || 0;
+    document.getElementById('r-total').textContent     = summary.total_today || 0;
+
+    const maxH = Math.max(...hospReport.map(h => h.total_assignments), 1);
+    document.getElementById('report-hosp-bars').innerHTML = hospReport.map(h => `
+      <div class="bar-row">
+        <span class="bar-label" title="${h.name}">${h.name}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round((h.total_assignments/maxH)*100)}%;background:var(--blue)"></div></div>
+        <span class="bar-count">${h.total_assignments}</span>
+      </div>`).join('') || '<div class="empty-state"><p>No data</p></div>';
+
+    const maxA = Math.max(...ambReport.map(a => a.total_assignments), 1);
+    document.getElementById('report-amb-bars').innerHTML = ambReport.map(a => `
+      <div class="bar-row">
+        <span class="bar-label">${a.vehicle_number} — ${a.driver_name||'—'}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.round((a.total_assignments/maxA)*100)}%;background:var(--red)"></div></div>
+        <span class="bar-count">${a.total_assignments}</span>
+      </div>`).join('') || '<div class="empty-state"><p>No data</p></div>';
+
+    const maxR = Math.max(...hours.map(h => h.total_requests), 1);
+    document.getElementById('report-hours').innerHTML = hours.length
+      ? hours.map(h => `
+        <div class="bar-row">
+          <span class="bar-label">${String(h.hour).padStart(2,'0')}:00</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.round((h.total_requests/maxR)*100)}%;background:var(--amber)"></div></div>
+          <span class="bar-count">${h.total_requests}</span>
+        </div>`).join('')
+      : '<div class="empty-state"><p>No requests logged today yet</p></div>';
+
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+loadPage('dashboard');
+</script>
+</body>
+</html>
